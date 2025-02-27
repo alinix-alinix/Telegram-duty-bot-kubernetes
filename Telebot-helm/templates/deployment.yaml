@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.appname }}"
+  namespace: "{{ .Values.app_namespace }}"
+  labels:
+    app: "{{ .Values.appname }}"
+    release_version: "{{ .Values.release_version }}"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: "{{ .Values.appname }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.appname }}"
+        release_version: "{{ .Values.release_version }}"
+    spec:
+      {{- if .Values.image.use_image_pull_secret }}
+      imagePullSecrets:
+        - name: {{ .Values.image.image_pull_secret_name }}
+      {{- end }}
+      containers:
+        - name: "{{ .Values.image.name }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          resources:
+            requests:
+              cpu: "{{ .Values.resources.requests.cpu }}"
+              memory: "{{ .Values.resources.requests.memory }}"
+            limits:
+              cpu: "{{ .Values.resources.limits.cpu }}"
+              memory: "{{ .Values.resources.limits.memory }}"
+          env:
+            - name: GLCI_TELEGRAM_BOTID
+              value: "{{ .Values.env.GLCI_TELEGRAM_BOTID }}"
+            - name: GLCI_TELEGRAM_CHATID
+              value: "{{ .Values.env.GLCI_TELEGRAM_CHATID }}"
+            - name: GLCI_ALLOWED_USERS
+              value: "{{ .Values.env.GLCI_ALLOWED_USERS }}"
