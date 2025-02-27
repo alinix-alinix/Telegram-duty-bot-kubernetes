@@ -1,0 +1,78 @@
+stages:
+- verify
+- make_container
+- deploy
+- uninstall
+
+variables:
+  IMAGE_NAME: "$CI_PROJECT_PATH"
+  DOCKER_IMAGE_TAG: "$CI_COMMIT_REF_NAME"
+
+.template-tags-default: &tags-default
+  tags:
+    - web
+    - shell
+
+.template-tags-docker: &tags-docker
+  tags:
+    - docker
+
+validate dockerfile:
+  <<: *tags-docker
+  stage: verify
+  script:
+  - docker run --rm --entrypoint /bin/hadolint -i hadolint/hadolint --failure-threshold warning - < Dockerfile
+  rules:
+  - when: always
+
+lint:
+  <<: *tags-docker
+  image: python:3
+  stage: verify
+  script:
+  - pip install flake8
+  - flake8 . --max-line-length=145
+  rules:
+  - when: always
+
+make_container:
+  <<: *tags-docker
+  stage: make_container
+  script:
+  - docker --version
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - docker build -t "$CI_REGISTRY_IMAGE:$DOCKER_IMAGE_TAG" .
+  - docker push "$CI_REGISTRY_IMAGE:$DOCKER_IMAGE_TAG"
+
+deploy_dry_run:
+  <<: *tags-default
+  stage: deploy
+  when: manual
+  script:
+    - >-
+      helm --kubeconfig ~/.kube/config-mir upgrade --install telegram-duty-bot $CI_PROJECT_DIR/telebot-helm
+      --set env.GLCI_TELEGRAM_BOTID="$GLCI_TELEGRAM_BOTID"
+      --set env.GLCI_TELEGRAM_CHATID="$GLCI_TELEGRAM_CHATID"
+      --set env.GLCI_ALLOWED_USERS="$GLCI_ALLOWED_USERS"
+      --set image.tag=$DOCKER_IMAGE_TAG
+      --dry-run
+      --debug
+
+deploy:
+  <<: *tags-default
+  stage: deploy
+  when: manual
+  script:
+    - >-
+      helm --kubeconfig ~/.kube/config-mir upgrade --install telegram-duty-bot $CI_PROJECT_DIR/telebot-helm
+      --set env.GLCI_TELEGRAM_BOTID="$GLCI_TELEGRAM_BOTID"
+      --set env.GLCI_TELEGRAM_CHATID="$GLCI_TELEGRAM_CHATID"
+      --set env.GLCI_ALLOWED_USERS="$GLCI_ALLOWED_USERS"
+      --set image.tag=$DOCKER_IMAGE_TAG
+
+uninstall:
+  <<: *tags-default
+  stage: uninstall
+  when: manual
+  script:
+    - helm --kubeconfig ~/.kube/config-mir uninstall telegram-duty-bot
