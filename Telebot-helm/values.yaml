@@ -1,0 +1,26 @@
+image:
+  repository: gitlab-registry.petcorp.ru/engineers/containers/telegram-duty-bot
+  name: "telegram-duty-bot"
+  tag: "master"
+  pullPolicy: Always
+  use_image_pull_secret: true
+  image_pull_secret_name: regcred
+
+appname: "teleduty-bot"
+app_namespace: "test"
+release_version: "1.0.0"
+
+replicaCount: 1
+
+env:
+  GLCI_TELEGRAM_BOTID: "empty"
+  GLCI_TELEGRAM_CHATID: "empty"
+  GLCI_ALLOWED_USERS: "empty"
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "150m"
+    memory: "384Mi"
